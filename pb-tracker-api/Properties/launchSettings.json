@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "pb_tracker_api": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7223",
+      "launchBrowser": false
+    }
+  }
+}
