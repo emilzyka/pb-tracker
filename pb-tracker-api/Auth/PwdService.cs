@@ -30,6 +30,8 @@ public interface IPwdService
 {
     Task<Result<PwdValidationRes, IError>> ValidatePwd(EncryptContent encContent, string pwdRef);
     Task<Result<string, IError>> EncryptPwd(EncryptContent encContent);
+    Task<Result<string, IError>> GenerateSalt();
+
 }
 
 public class PwdService(IConfiguration config) : IPwdService
@@ -55,12 +57,14 @@ public class PwdService(IConfiguration config) : IPwdService
             .MapNoneErrAsync(new ConfigMissingError("pwd key not found", nameof(EncryptPwd)))
             .Then(key =>
             {
-                var encRes = EncryptIntoB64U(Convert.FromBase64String(key), encContent);
+                var encRes = HashPwdToBase64Url(Convert.FromBase64String(key), encContent);
                 return Task.FromResult(Result<string, IError>.Ok($"#01#{encRes}"));
             });
 
+    public Task<Result<string, IError>> GenerateSalt()
+        => Task.FromResult(Result<string, IError>.Ok(Guid.NewGuid().ToString()));
 
-    public string EncryptIntoB64U(byte[] key, EncryptContent encContent)
+    public string HashPwdToBase64Url(byte[] key, EncryptContent encContent)
     {
         using var hmac = new HMACSHA512(key);
 

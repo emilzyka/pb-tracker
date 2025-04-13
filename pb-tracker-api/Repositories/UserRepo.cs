@@ -1,4 +1,5 @@
-﻿using Azure;
+﻿using System.Net;
+using Azure;
 using Azure.Data.Tables;
 using pb_tracker_api.Abstractions;
 using pb_tracker_api.Models.Auth;
@@ -19,7 +20,14 @@ public class UserEntity : ITableEntity
 #pragma warning restore CS8618
 }
 #endregion: -- Models
-public class UserRepo
+
+public interface IUserRepo
+{
+    Task<Result<Option<User>, IError>> FirstByUsername(string username);
+    Task<Result<UserEntity, IError>> Insert(UserEntity user);
+}
+
+public class UserRepo : IUserRepo
 {
     private readonly TableClient _tableClient = new TableClient("connectionstring", "table"); // move to factory
 
@@ -38,12 +46,36 @@ public class UserRepo
         }
         catch (RequestFailedException ex)
         {
-            Task.FromResult(Result<Option<User>, IError>.Err(new UnknownError()); // TODO: Add error detailing caught error
+            return Task.FromResult(Result<Option<User>, IError>.Err(new UserQueryError($"{ex}", nameof(FirstByUsername))));
+        }
+    }
+
+    public Task<Result<UserEntity, IError>> Insert(UserEntity user)
+    {
+        try
+        {
+            var result = _tableClient.AddEntity(user);
+            return Task.FromResult(Result<UserEntity, IError>.Ok(user));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(Result<UserEntity, IError>.Err(new UserQueryError($"{ex}", nameof(Insert))));
+
         }
     }
 
 }
 
+#region: -- Errors 
+
+public record UserQueryError(string ErrorMessage, string ErrorSourceMethod) : IError
+{
+    public string ErrorCode => "USER_QUERY_ERROR";
+    public DateTime Timestamp { get; } = DateTime.UtcNow;
+    HttpStatusCode IError.StatusCode => HttpStatusCode.InternalServerError;
+}
+
+#endregion: -- Errors 
 
 #region -- Ext
 public static class UserExt
