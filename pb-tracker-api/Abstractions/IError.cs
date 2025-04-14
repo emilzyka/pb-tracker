@@ -14,10 +14,24 @@ public interface IError
 }
 
 #region: -- General errors
-
 public record ConfigMissingError(string ErrorMessage, string ErrorSourceMethod) : IError
 {
     public string ErrorCode => "CONFIG_MISSING_ERROR";
+    public DateTime Timestamp { get; } = DateTime.UtcNow;
+    HttpStatusCode IError.StatusCode => HttpStatusCode.InternalServerError;
+}
+
+public record DeserializationError(string ErrorMessage, string ErrorSourceMethod) : IError
+{
+    public string ErrorCode => "DESERIALIZE_FAILED_ERROR";
+    public DateTime Timestamp { get; } = DateTime.UtcNow;
+    HttpStatusCode IError.StatusCode => HttpStatusCode.InternalServerError;
+}
+
+
+public record InvalidFormat(string ErrorMessage, string ErrorSourceMethod) : IError
+{
+    public string ErrorCode => "INVALID_FORMAT";
     public DateTime Timestamp { get; } = DateTime.UtcNow;
     HttpStatusCode IError.StatusCode => HttpStatusCode.InternalServerError;
 }
@@ -30,7 +44,5 @@ public record UnknownError : IError
     public DateTime Timestamp { get; } = DateTime.UtcNow;
     HttpStatusCode IError.StatusCode => HttpStatusCode.InternalServerError;
 }
-
-
 #endregion: -- General errors
 

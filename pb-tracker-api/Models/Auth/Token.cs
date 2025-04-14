@@ -6,6 +6,8 @@ public class Token
     public string Exp { get; set; }         // Expiration in ISO 8601
     public string SignB64U { get; set; }    // Signature base64url
 
+    public override string ToString() => $"{Ident}.{Exp}.{SignB64U}";
+
     private Token(
         string ident,
         string exp,

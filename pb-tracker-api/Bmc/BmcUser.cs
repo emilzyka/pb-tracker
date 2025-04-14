@@ -8,11 +8,9 @@ namespace pb_tracker_api.Bmc;
 
 
 #region -- Models 
-
 public record UserLogin(string Username, string Pwd);
 
 public record UserRegister(string Username, string Pwd);
-
 #endregion -- Models 
 
 
@@ -20,18 +18,19 @@ public record UserRegister(string Username, string Pwd);
 
 public interface IBmcUser
 {
-
+    Task<Result<User, IError>> Login(UserLogin user);
+    Task<Result<UserId, IError>> Register(UserRegister user);
 }
 
 public class BmcUser(
-    IUserRepo _userRepo,
-    IPwdService pwdService)
+    IUserRepo userRepo,
+    IPwdService pwdService) : IBmcUser
 {
-    private readonly IUserRepo userRepo = _userRepo;
+    private readonly IUserRepo _userRepo = userRepo;
     private readonly IPwdService _pwdService = pwdService;
 
-    public async Task<Result<UserId, IError>> Login(UserLogin user)
-        => await userRepo
+    public async Task<Result<User, IError>> Login(UserLogin user)
+        => await _userRepo
                .FirstByUsername(user.Username)
                .Then(maybeUser => maybeUser.ToAsyncResult(new UserNotFoundError("Username does not exist", nameof(Login))))
                .Then(async dbUser =>
@@ -39,21 +38,20 @@ public class BmcUser(
                    // -- Validate password
                    var encContent = EncryptContent.Create(user.Pwd, dbUser.Pwd_salt);
                    var pwdValid = await _pwdService.ValidatePwd(encContent, dbUser.Pwd);
+
                    return pwdValid.Match(
-                       _ => Result<UserId, IError>.Ok(UserId.Create(dbUser.Id)),
-                       err => Result<UserId, IError>.Err(err)
+                       _ => Result<User, IError>.Ok(dbUser),
+                       err => Result<User, IError>.Err(err)
                    );
                });
 
-
     public async Task<Result<UserId, IError>> Register(UserRegister user)
-        => await userRepo
+        => await _userRepo
             .FirstByUsername(user.Username)
             .Then(maybeUser => CheckIfUserExists(maybeUser))
             .Then(_ => CreateUserRecord(user))
-            .Then(newUser => userRepo.Insert(newUser))
+            .Then(newUser => _userRepo.Insert(newUser))
             .Map(inserted => UserId.Create(inserted.PartitionKey));
-
 
 
     #region -- Private Methods
@@ -61,7 +59,6 @@ public class BmcUser(
         => maybeUser.IsNone
             ? Task.FromResult(Result<UserId, IError>.Ok(UserId.Void()))
             : Task.FromResult(Result<UserId, IError>.Err(new UserAlreadyExists("Username already exists", nameof(CheckIfUserExists))));
-
 
     private Task<Result<UserEntity, IError>> CreateUserRecord(UserRegister user)
         => _pwdService
@@ -82,8 +79,6 @@ public class BmcUser(
             }));
 
     #endregion -- Private Methods
-
-
 }
 
 #region: -- Errors

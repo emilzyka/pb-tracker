@@ -17,6 +17,7 @@ var host = new HostBuilder()
         .Expect("IConfiguration could not be found. Unrecoverable error.");
 
         services.AddServices();
+        services.AddRepos();
 
     })
     .Build();

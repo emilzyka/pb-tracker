@@ -57,7 +57,7 @@ public class PwdService(IConfiguration config) : IPwdService
             .MapNoneErrAsync(new ConfigMissingError("pwd key not found", nameof(EncryptPwd)))
             .Then(key =>
             {
-                var encRes = HashPwdToBase64Url(Convert.FromBase64String(key), encContent);
+                var encRes = HashPwdToBase64Url(Utils.Base64UrlDecode(key), encContent);
                 return Task.FromResult(Result<string, IError>.Ok($"#01#{encRes}"));
             });
 
@@ -75,14 +75,6 @@ public class PwdService(IConfiguration config) : IPwdService
         hmac.TransformFinalBlock(saltBytes, 0, saltBytes.Length);
 
         var hash = hmac.Hash!;
-        return Base64UrlEncode(hash);
-    }
-
-    private string Base64UrlEncode(byte[] input)
-    {
-        return Convert.ToBase64String(input)
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
+        return Utils.Base64UrlEncode(hash);
     }
 }

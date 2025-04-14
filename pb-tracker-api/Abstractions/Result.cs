@@ -74,6 +74,17 @@ public static class ResultExt
             err => new ObjectResult(err) { StatusCode = (int)err.StatusCode }
        );
     }
+
+    public static async Task<IActionResult> MapIActionResultErrOrOk<T, IError>(
+      this Task<Result<T, IError>> resultTask)
+    {
+        Result<T, IError> result = await resultTask;
+
+        return result.Match<IActionResult>(
+            ok => new OkObjectResult(ok),
+            err => new ObjectResult(err) { StatusCode = (int)err.StatusCode }
+       );
+    }
 }
 
 

@@ -2,6 +2,7 @@
 using Azure;
 using Azure.Data.Tables;
 using pb_tracker_api.Abstractions;
+using pb_tracker_api.Infrastructure;
 using pb_tracker_api.Models.Auth;
 
 namespace pb_tracker_api.Repositories;
@@ -27,55 +28,58 @@ public interface IUserRepo
     Task<Result<UserEntity, IError>> Insert(UserEntity user);
 }
 
-public class UserRepo : IUserRepo
+public class UserRepo(
+    ITableClientFactory factory) : IUserRepo
 {
-    private readonly TableClient _tableClient = new TableClient("connectionstring", "table"); // move to factory
+    private readonly Task<Result<TableClient, IError>> _tableClient = factory.GetTableClientByKey(TableClientTable.User);
 
-    public Task<Result<Option<User>, IError>> FirstByUsername(string username)
-    {
-        try
-        {
-            Pageable<UserEntity> entities = _tableClient.Query<UserEntity>(filter: $"RowKey eq '{username}'");
-
-            if (!entities.Any())
+    public async Task<Result<Option<User>, IError>> FirstByUsername(string username)
+        => await _tableClient
+            .Then(client =>
             {
-                return Task.FromResult(Result<Option<User>, IError>.Ok(Option<User>.None()));
+                try
+                {
+                    Pageable<UserEntity> entities = client.Query<UserEntity>(filter: $"RowKey eq '{username}'");
+
+                    if (!entities.Any())
+                    {
+                        return Task.FromResult(Result<Option<User>, IError>.Ok(Option<User>.None()));
+                    }
+
+                    return Task.FromResult(Result<Option<User>, IError>.Ok(Option<User>.Some(entities.First().ToUser())));
+                }
+                catch (RequestFailedException ex)
+                {
+                    return Task.FromResult(Result<Option<User>, IError>.Err(new UserQueryError($"{ex}", nameof(FirstByUsername))));
+                }
+            });
+
+    public async Task<Result<UserEntity, IError>> Insert(UserEntity user)
+        => await _tableClient
+        .Then(client =>
+        {
+            try
+            {
+                var result = client.AddEntity(user);
+                return Task.FromResult(Result<UserEntity, IError>.Ok(user));
             }
-
-            return Task.FromResult(Result<Option<User>, IError>.Ok(Option<User>.Some(entities.First().ToUser())));
-        }
-        catch (RequestFailedException ex)
-        {
-            return Task.FromResult(Result<Option<User>, IError>.Err(new UserQueryError($"{ex}", nameof(FirstByUsername))));
-        }
-    }
-
-    public Task<Result<UserEntity, IError>> Insert(UserEntity user)
-    {
-        try
-        {
-            var result = _tableClient.AddEntity(user);
-            return Task.FromResult(Result<UserEntity, IError>.Ok(user));
-        }
-        catch (Exception ex)
-        {
-            return Task.FromResult(Result<UserEntity, IError>.Err(new UserQueryError($"{ex}", nameof(Insert))));
-
-        }
-    }
+            catch (Exception ex)
+            {
+                return Task.FromResult(Result<UserEntity, IError>.Err(new UserQueryError($"{ex}", nameof(Insert))));
+            }
+        });
 
 }
 
 #region: -- Errors 
-
 public record UserQueryError(string ErrorMessage, string ErrorSourceMethod) : IError
 {
     public string ErrorCode => "USER_QUERY_ERROR";
     public DateTime Timestamp { get; } = DateTime.UtcNow;
     HttpStatusCode IError.StatusCode => HttpStatusCode.InternalServerError;
 }
-
 #endregion: -- Errors 
+
 
 #region -- Ext
 public static class UserExt
