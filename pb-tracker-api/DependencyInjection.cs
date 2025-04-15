@@ -13,14 +13,17 @@ public static class DependencyInjection
         services.AddScoped<IPwdService, PwdService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<ITableClientFactory, TableClientFactory>();
+        services.AddScoped<IAuthResolver, AuthResolver>();
 
         // -- BMC
         services.AddScoped<IBmcUser, BmcUser>();
+        services.AddScoped<IBmcPb, BmcPb>();
     }
 
     public static void AddRepos(this IServiceCollection services)
     {
         services.AddScoped<IUserRepo, UserRepo>();
+        services.AddScoped<IPbRepo, PbRepo>();
     }
 }
 

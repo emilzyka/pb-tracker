@@ -28,8 +28,7 @@ public interface IUserRepo
     Task<Result<UserEntity, IError>> Insert(UserEntity user);
 }
 
-public class UserRepo(
-    ITableClientFactory factory) : IUserRepo
+public class UserRepo(ITableClientFactory factory) : IUserRepo
 {
     private readonly Task<Result<TableClient, IError>> _tableClient = factory.GetTableClientByKey(TableClientTable.User);
 

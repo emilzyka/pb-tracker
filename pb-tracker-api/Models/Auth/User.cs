@@ -4,7 +4,6 @@
 public record struct UserId(string Id)
 {
     public static UserId Create(string id) => new(id);
-
     public static UserId Void() => new(string.Empty);
 
     public static implicit operator string(UserId userId) => userId.Id.ToString();

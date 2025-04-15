@@ -20,6 +20,7 @@ public interface IBmcUser
 {
     Task<Result<User, IError>> Login(UserLogin user);
     Task<Result<UserId, IError>> Register(UserRegister user);
+    Task<Result<User, IError>> FindByUsername(string username);
 }
 
 public class BmcUser(
@@ -48,17 +49,28 @@ public class BmcUser(
     public async Task<Result<UserId, IError>> Register(UserRegister user)
         => await _userRepo
             .FirstByUsername(user.Username)
-            .Then(maybeUser => CheckIfUserExists(maybeUser))
+            .Then(maybeUser => CheckIfUserDoesNotExists(maybeUser))
             .Then(_ => CreateUserRecord(user))
             .Then(newUser => _userRepo.Insert(newUser))
             .Map(inserted => UserId.Create(inserted.PartitionKey));
 
 
+    public async Task<Result<User, IError>> FindByUsername(string username)
+       => await _userRepo
+           .FirstByUsername(username)
+           .Then(maybeUser => CheckIfUserDoesExists(maybeUser));
+
+
     #region -- Private Methods
-    private Task<Result<UserId, IError>> CheckIfUserExists(Option<User> maybeUser)
-        => maybeUser.IsNone
-            ? Task.FromResult(Result<UserId, IError>.Ok(UserId.Void()))
-            : Task.FromResult(Result<UserId, IError>.Err(new UserAlreadyExists("Username already exists", nameof(CheckIfUserExists))));
+    private Task<Result<UserId, IError>> CheckIfUserDoesNotExists(Option<User> maybeUser)
+          => maybeUser.IsNone
+              ? Task.FromResult(Result<UserId, IError>.Ok(UserId.Void()))
+              : Task.FromResult(Result<UserId, IError>.Err(new UserAlreadyExists("Username already exists", nameof(CheckIfUserDoesNotExists))));
+
+    private Task<Result<User, IError>> CheckIfUserDoesExists(Option<User> maybeUser)
+      => maybeUser.IsSome
+          ? Task.FromResult(Result<User, IError>.Ok(maybeUser.Value))
+          : Task.FromResult(Result<User, IError>.Err(new UserNotFound("Username already exists", nameof(CheckIfUserDoesExists))));
 
     private Task<Result<UserEntity, IError>> CreateUserRecord(UserRegister user)
         => _pwdService
@@ -86,6 +98,13 @@ public class BmcUser(
 public record UserAlreadyExists(string ErrorMessage, string ErrorSourceMethod) : IError
 {
     public string ErrorCode => "USERNAME_ALDREADY_EXISTS";
+    public DateTime Timestamp { get; } = DateTime.UtcNow;
+    HttpStatusCode IError.StatusCode => HttpStatusCode.NotFound;
+}
+
+public record UserNotFound(string ErrorMessage, string ErrorSourceMethod) : IError
+{
+    public string ErrorCode => "USER_DOES_NOT_EXISTS";
     public DateTime Timestamp { get; } = DateTime.UtcNow;
     HttpStatusCode IError.StatusCode => HttpStatusCode.NotFound;
 }
