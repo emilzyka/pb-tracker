@@ -49,7 +49,7 @@ public class BmcUser(
     public async Task<Result<UserId, IError>> Register(UserRegister user)
         => await _userRepo
             .FirstByUsername(user.Username)
-            .Then(maybeUser => CheckIfUserDoesNotExists(maybeUser))
+            .Then(maybeUser => CheckIfUserNotExists(maybeUser))
             .Then(_ => CreateUserRecord(user))
             .Then(newUser => _userRepo.Insert(newUser))
             .Map(inserted => UserId.Create(inserted.PartitionKey));
@@ -58,19 +58,19 @@ public class BmcUser(
     public async Task<Result<User, IError>> FindByUsername(string username)
        => await _userRepo
            .FirstByUsername(username)
-           .Then(maybeUser => CheckIfUserDoesExists(maybeUser));
+           .Then(maybeUser => CheckIfUserExists(maybeUser));
 
 
     #region -- Private Methods
-    private Task<Result<UserId, IError>> CheckIfUserDoesNotExists(Option<User> maybeUser)
+    private Task<Result<UserId, IError>> CheckIfUserNotExists(Option<User> maybeUser)
           => maybeUser.IsNone
               ? Task.FromResult(Result<UserId, IError>.Ok(UserId.Void()))
-              : Task.FromResult(Result<UserId, IError>.Err(new UserAlreadyExists("Username already exists", nameof(CheckIfUserDoesNotExists))));
+              : Task.FromResult(Result<UserId, IError>.Err(new UserAlreadyExists("Username already exists", nameof(CheckIfUserNotExists))));
 
-    private Task<Result<User, IError>> CheckIfUserDoesExists(Option<User> maybeUser)
+    private Task<Result<User, IError>> CheckIfUserExists(Option<User> maybeUser)
       => maybeUser.IsSome
           ? Task.FromResult(Result<User, IError>.Ok(maybeUser.Value))
-          : Task.FromResult(Result<User, IError>.Err(new UserNotFound("Username already exists", nameof(CheckIfUserDoesExists))));
+          : Task.FromResult(Result<User, IError>.Err(new UserNotFound("Username already exists", nameof(CheckIfUserExists))));
 
     private Task<Result<UserEntity, IError>> CreateUserRecord(UserRegister user)
         => _pwdService

@@ -18,6 +18,8 @@ var host = new HostBuilder()
 
         services.AddServices();
         services.AddRepos();
+        services.AddValidators();
+        services.AddValidators();
 
     })
     .Build();

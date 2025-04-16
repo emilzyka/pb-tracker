@@ -14,6 +14,13 @@ public interface IError
 }
 
 #region: -- General errors
+public record ValidationError(string ErrorMessage, string ErrorSourceMethod) : IError
+{
+    public string ErrorCode => "VALIDATION_ERROR";
+    public DateTime Timestamp { get; } = DateTime.UtcNow;
+    HttpStatusCode IError.StatusCode => HttpStatusCode.InternalServerError;
+}
+
 public record ConfigMissingError(string ErrorMessage, string ErrorSourceMethod) : IError
 {
     public string ErrorCode => "CONFIG_MISSING_ERROR";
@@ -27,7 +34,6 @@ public record DeserializationError(string ErrorMessage, string ErrorSourceMethod
     public DateTime Timestamp { get; } = DateTime.UtcNow;
     HttpStatusCode IError.StatusCode => HttpStatusCode.InternalServerError;
 }
-
 
 public record InvalidFormat(string ErrorMessage, string ErrorSourceMethod) : IError
 {

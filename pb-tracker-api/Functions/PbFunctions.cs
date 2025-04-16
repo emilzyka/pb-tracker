@@ -15,12 +15,28 @@ public class PbFunctions(
     private readonly IBmcPb _bmc = bmc;
     private readonly IAuthResolver _authResolver = authResolver;
 
-    [Function("UpsertPb")]
-    public async Task<IActionResult> Register([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req)
+    [Function("AddPb")]
+    public async Task<IActionResult> AddPb([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req)
       => await req.TryReadFromJsonAsync<PbCreateReq>()
         .Then(command => _authResolver.TokenRequire(req)
             .Map(id => (command, id)))
-        .Then(request => _bmc.UpsertPb(request.command with { cid = request.id }))
+        .Then(request => _bmc.AddPb(request.command with { Cid = request.id }))
+        .MapIActionResultErrOrOk();
+
+
+    [Function("GetAllPbUser")]
+    public async Task<IActionResult> GetAllPbUser([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req)
+      => await _authResolver.TokenRequire(req)
+        .Then(id => _bmc.GetAlPbsUser(id))
+        .MapIActionResultErrOrOk();
+
+
+    [Function("RemovePb")]
+    public async Task<IActionResult> RemovePb([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req)
+      => await req.TryReadFromJsonAsync<PbDeleteReq>()
+        .Then(command => _authResolver.TokenRequire(req)
+            .Map(id => (command, id)))
+        .Then(request => _bmc.DeletePb(request.command with { Cid = request.id }))
         .MapIActionResultErrOrOk();
 
 }

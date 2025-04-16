@@ -1,7 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
 using pb_tracker_api.Auth;
 using pb_tracker_api.Bmc;
 using pb_tracker_api.Infrastructure;
+using pb_tracker_api.Models;
 using pb_tracker_api.Repositories;
 
 namespace pb_tracker_api;
@@ -24,6 +26,11 @@ public static class DependencyInjection
     {
         services.AddScoped<IUserRepo, UserRepo>();
         services.AddScoped<IPbRepo, PbRepo>();
+    }
+
+    public static void AddValidators(this IServiceCollection services)
+    {
+        services.AddScoped<IValidator<PersonalBest>, PersonalBestValidator>();
     }
 }
 
