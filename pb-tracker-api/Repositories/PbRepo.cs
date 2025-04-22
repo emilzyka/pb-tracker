@@ -4,7 +4,6 @@ using Azure.Data.Tables;
 using pb_tracker_api.Abstractions;
 using pb_tracker_api.Infrastructure;
 using pb_tracker_api.Models;
-using pb_tracker_api.Models.Auth;
 
 namespace pb_tracker_api.Repositories;
 
@@ -13,12 +12,13 @@ namespace pb_tracker_api.Repositories;
 public class PbEntity : ITableEntity
 {
 #pragma warning disable CS8618 
-    public string PartitionKey { get; set; }
-    public string RowKey { get; set; }
+    public string PartitionKey { get; set; }    // 'cid|category_name'
+    public string RowKey { get; set; }          // uuid
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
-    public string ExerciseName { get; set; }
-    public string Pbdesc { get; set; }
+    public string PbDescription { get; set; }
+    public string DateOfPb { get; set; }
+
 #pragma warning restore CS8618
 }
 
@@ -27,27 +27,27 @@ public class PbEntity : ITableEntity
 
 public interface IPbRepo
 {
-    Task<Result<PersonalBest, IError>> AddPb(PbEntity pb);
+    Task<Result<PbEntity, IError>> AddPb(PbEntity pb);
     Task<Result<bool, IError>> DeletePb(string partitionKey, string rowKey);
-    Task<Result<List<PersonalBest>, IError>> GetAllPbsByUser(UserId userId);
+    Task<Result<List<PbEntity>, IError>> GetPbsByUserAndCat(PersonalBestId id);
 }
 
 public class PbRepo(ITableClientFactory factory) : IPbRepo
 {
     private readonly Task<Result<TableClient, IError>> _tableClient = factory.GetTableClientByKey(TableClientTable.Pb);
 
-    public async Task<Result<PersonalBest, IError>> AddPb(PbEntity pb)
+    public async Task<Result<PbEntity, IError>> AddPb(PbEntity pb)
         => await _tableClient
         .Then(client =>
         {
             try
             {
                 var result = client.UpsertEntity(pb);
-                return Task.FromResult(Result<PersonalBest, IError>.Ok(pb.ToPersonalBest()));
+                return Task.FromResult(Result<PbEntity, IError>.Ok(pb));
             }
             catch (Exception ex)
             {
-                return Task.FromResult(Result<PersonalBest, IError>.Err(new PbQueryError($"{ex}", nameof(AddPb))));
+                return Task.FromResult(Result<PbEntity, IError>.Err(new PbQueryError($"{ex}", nameof(AddPb))));
             }
         });
 
@@ -66,27 +66,27 @@ public class PbRepo(ITableClientFactory factory) : IPbRepo
                 }
             });
 
-    public async Task<Result<List<PersonalBest>, IError>> GetAllPbsByUser(UserId userId)
-    => await _tableClient.Then(async client =>
-    {
-        try
-        {
-            var query = client.QueryAsync<PbEntity>(e => e.PartitionKey == userId.Id);
+    public async Task<Result<List<PbEntity>, IError>> GetPbsByUserAndCat(PersonalBestId id)
+     => await _tableClient.Then(async client =>
+     {
+         try
+         {
+             var query = client.QueryAsync<PbEntity>(e => e.PartitionKey == id);
 
-            var result = new List<PersonalBest>();
+             var result = new List<PbEntity>();
 
-            await foreach (var entity in query)
-            {
-                result.Add(entity.ToPersonalBest());
-            }
+             await foreach (var entity in query)
+             {
+                 result.Add(entity);
+             }
 
-            return Result<List<PersonalBest>, IError>.Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return Result<List<PersonalBest>, IError>.Err(new PbQueryError(ex.ToString(), nameof(GetAllPbsByUser)));
-        }
-    });
+             return Result<List<PbEntity>, IError>.Ok(result);
+         }
+         catch (Exception ex)
+         {
+             return Result<List<PbEntity>, IError>.Err(new PbQueryError(ex.ToString(), nameof(GetPbsByUserAndCat)));
+         }
+     });
 
 }
 

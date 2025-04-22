@@ -37,5 +37,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="C:\code\pb-tracker\pb-tracker-api\.editorconfig" />
+    <None Include="local.settings.json" />
   </ItemGroup>
 </Project>

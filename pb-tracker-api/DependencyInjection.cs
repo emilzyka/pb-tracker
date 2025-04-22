@@ -19,18 +19,21 @@ public static class DependencyInjection
 
         // -- BMC
         services.AddScoped<IBmcUser, BmcUser>();
+        services.AddScoped<IBmcPbCategory, BmcPbCategory>();
         services.AddScoped<IBmcPb, BmcPb>();
     }
 
     public static void AddRepos(this IServiceCollection services)
     {
         services.AddScoped<IUserRepo, UserRepo>();
+        services.AddScoped<IPbCategoryRepo, PbCategoryRepo>();
         services.AddScoped<IPbRepo, PbRepo>();
     }
 
     public static void AddValidators(this IServiceCollection services)
     {
         services.AddScoped<IValidator<PersonalBest>, PersonalBestValidator>();
+        services.AddScoped<IValidator<PersonalBestCategory>, PersonalBestCategoryValidator>();
     }
 }
 

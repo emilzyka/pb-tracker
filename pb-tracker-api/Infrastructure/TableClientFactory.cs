@@ -9,6 +9,7 @@ public enum TableClientTable
 {
     User,
     Pb,
+    PbCategory,
 }
 #endregion: -- Models
 
@@ -32,6 +33,7 @@ public class TableClientFactory(IConfiguration config) : ITableClientFactory
                     // --  Add more tables as needed
                     TableClientTable.User => Task.FromResult(Result<TableClient, IError>.Ok(new TableClient(connection, "User"))),
                     TableClientTable.Pb => Task.FromResult(Result<TableClient, IError>.Ok(new TableClient(connection, "Pblog"))),
+                    TableClientTable.PbCategory => Task.FromResult(Result<TableClient, IError>.Ok(new TableClient(connection, "PbCategory"))),
                     _ => Task.FromResult(Result<TableClient, IError>.Err(new ConfigMissingError($"Table with key:{table} not found", nameof(GetTableClientByKey)))),
                 };
             });

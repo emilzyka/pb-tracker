@@ -1,6 +1,5 @@
 ﻿using FluentValidation;
 using pb_tracker_api.Abstractions;
-using pb_tracker_api.Extensions;
 using pb_tracker_api.Models;
 using pb_tracker_api.Models.Auth;
 using pb_tracker_api.Repositories;
@@ -9,52 +8,70 @@ namespace pb_tracker_api.Bmc;
 
 
 #region -- Models 
-public record PbCreateReq(UserId Cid, string ExerciseName, string PbDesc, string DateOfPb);
-public record PbDeleteReq(UserId Cid, string Id, string ExerciseName);
+public record PbCreateReq(UserId Cid, string CategoryName, string PbDescription, string DateOfPb);
+public record PbCatGetReq(UserId Cid, string CategoryName);
+public record PbDeleteReq(UserId Cid, string CategoryName, string Rowkey);
 
 #endregion -- Models 
 
+
+#region: -- Validation
+public class PersonalBestValidator : AbstractValidator<PersonalBest>
+{
+    public PersonalBestValidator()
+    {
+        RuleFor(x => x.Id).NotEmpty().WithMessage("Id is required.");
+
+        RuleFor(x => x.PbDescription)
+            .NotEmpty()
+            .WithMessage("Description name is required.")
+            .MaximumLength(200).WithMessage("Descriptionmust be less than 200 characters.");
+    }
+}
+#endregion: -- Validation
+
 public interface IBmcPb
 {
-    Task<Result<PersonalBest, IError>> AddPb(PbCreateReq req);
+    Task<Result<PbEntity, IError>> AddPb(PbCreateReq req);
     Task<Result<bool, IError>> DeletePb(PbDeleteReq req);
-    Task<Result<List<PersonalBest>, IError>> GetAlPbsUser(UserId req);
-
+    Task<Result<List<PbEntity>, IError>> GetAllPbsUserAnCat(PbCatGetReq req);
 }
 
 // -- Backend Model Controller
 
-
 public class BmcPb(
-    IPbRepo pbRepo,
-    IValidator<PersonalBest> pbValidator) : IBmcPb
+    IPbRepo repo) : IBmcPb
 {
-    private readonly IPbRepo _pbRepo = pbRepo;
-    private readonly IValidator<PersonalBest> _pbValidator = pbValidator;
+    private readonly IPbRepo _repo = repo;
+    //private readonly IValidator<PersonalBest> _Validator = pbValidator;
 
 
-    public async Task<Result<PersonalBest, IError>> AddPb(PbCreateReq req)
+    public async Task<Result<PbEntity, IError>> AddPb(PbCreateReq req)
     {
-        var pb = PersonalBest.Create(req.Cid, req.ExerciseName, req.PbDesc, req.DateOfPb);
+        var id = PersonalBestId.Create(
+            req.Cid,
+            req.CategoryName);
 
-        return await ValidationExt.ValidateOrError(pb, _pbValidator)
-            .Map(validPb => new PbEntity
-            {
-                PartitionKey = req.Cid.Id,
-                RowKey = pb.DateOfPb,
-                Pbdesc = pb.PbDesc,
-                ExerciseName = pb.ExerciseName
-            })
-        .Then(pbEntity => _pbRepo.AddPb(pbEntity));
+        var pb = PersonalBest.Create(
+            id,
+            req.PbDescription,
+            req.DateOfPb);
+
+        var entity = new PbEntity
+        {
+            PartitionKey = pb.Id,
+            RowKey = Guid.NewGuid().ToString(),
+            PbDescription = pb.PbDescription,
+            DateOfPb = pb.DateOfPb.ToString()
+        };
+
+        return await _repo.AddPb(entity);
     }
 
     public async Task<Result<bool, IError>> DeletePb(PbDeleteReq req)
-       => await _pbRepo.DeletePb(req.Id, req.ExerciseName);
+       => await _repo.DeletePb(PersonalBestId.Create(req.Cid.Id, req.CategoryName), req.Rowkey);
 
-    public async Task<Result<List<PersonalBest>, IError>> GetAlPbsUser(UserId req)
-        => await _pbRepo.GetAllPbsByUser(req);
+    public async Task<Result<List<PbEntity>, IError>> GetAllPbsUserAnCat(PbCatGetReq req)
+        => await _repo.GetPbsByUserAndCat(PersonalBestId.Create(req.Cid.Id, req.CategoryName));
 
-    #region: -- Private methods
-
-    #endregion: -- Private methods
 }

@@ -25,9 +25,11 @@ public class PbFunctions(
 
 
     [Function("GetAllPbUser")]
-    public async Task<IActionResult> GetAllPbUser([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req)
-      => await _authResolver.TokenRequire(req)
-        .Then(id => _bmc.GetAlPbsUser(id))
+    public async Task<IActionResult> GetAllPbUser([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req)
+      => await req.TryReadFromJsonAsync<PbCatGetReq>()
+        .Then(command => _authResolver.TokenRequire(req)
+            .Map(id => (command, id)))
+        .Then(request => _bmc.GetAllPbsUserAnCat(request.command with { Cid = request.id }))
         .MapIActionResultErrOrOk();
 
 
